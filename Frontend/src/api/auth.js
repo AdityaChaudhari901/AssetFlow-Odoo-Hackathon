@@ -44,6 +44,15 @@ export function signup(payload) {
     const response = await withSessionLock(() =>
       authApi.post("/auth/signup", payload),
     );
+    const responsePayload = unwrapData(response);
+
+    if (!responsePayload?.session?.access_token) {
+      throw new ApiError({
+        code: "INVALID_SESSION_RESPONSE",
+        message: "The server returned an invalid signup session.",
+      });
+    }
+
     return response;
   });
 }

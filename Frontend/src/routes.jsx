@@ -119,16 +119,17 @@ const NotFoundPage = lazyNamed(
 export function AppRoutes() {
   return (
     <Routes>
+      <Route
+        path="/reset-password"
+        element={<Page component={ResetPasswordPage} />}
+      />
+
       <Route element={<RequireGuest />}>
         <Route path="/login" element={<Page component={LoginPage} />} />
         <Route path="/signup" element={<Page component={SignupPage} />} />
         <Route
           path="/forgot-password"
           element={<Page component={ForgotPasswordPage} />}
-        />
-        <Route
-          path="/reset-password"
-          element={<Page component={ResetPasswordPage} />}
         />
       </Route>
 

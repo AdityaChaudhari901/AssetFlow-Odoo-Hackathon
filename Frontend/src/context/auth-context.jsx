@@ -10,9 +10,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 
 import {
+  forgotPassword as forgotPasswordRequest,
   getCurrentUser,
   login as loginRequest,
   logout as logoutRequest,
+  resetPassword as resetPasswordRequest,
   restoreSession,
   signup as signupRequest,
 } from "@/api/auth";
@@ -284,6 +286,28 @@ export function AuthProvider({ children }) {
     }
   }, [clearAuthenticatedState]);
 
+  const requestPasswordReset = useCallback(
+    (email) => forgotPasswordRequest(email),
+    [],
+  );
+
+  const resetPassword = useCallback(
+    async (payload) => {
+      await waitForPendingRefresh();
+      const result = await resetPasswordRequest(payload);
+      clearAuthenticatedState({ broadcast: true });
+
+      try {
+        await logoutRequest();
+      } catch {
+        // The reset endpoint remains responsible for revoking sessions and clearing its cookie.
+      }
+
+      return result;
+    },
+    [clearAuthenticatedState],
+  );
+
   const refreshProfile = useCallback(async () => {
     const operation = authOperation.current;
     const generation = getSessionGeneration();
@@ -319,6 +343,8 @@ export function AuthProvider({ children }) {
       authError,
       login,
       signup,
+      requestPasswordReset,
+      resetPassword,
       logout,
       retryAuthentication: hydrateSession,
       refreshProfile,
@@ -334,6 +360,8 @@ export function AuthProvider({ children }) {
       loading,
       login,
       logout,
+      requestPasswordReset,
+      resetPassword,
       refreshProfile,
       signup,
       user,

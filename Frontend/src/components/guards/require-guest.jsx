@@ -1,21 +1,19 @@
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 
-import { RouteLoading } from "@/components/shared/route-loading";
+import { getSafeReturnPath } from "@/features/auth/auth-navigation";
+import { AuthSessionLoading } from "@/features/auth/components/auth-session-loading";
 import { useAuth } from "@/hooks/use-auth";
 
 export function RequireGuest() {
+  const location = useLocation();
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <main className="min-h-screen px-4 py-12 sm:px-6">
-        <RouteLoading label="Checking your AssetFlow session" />
-      </main>
-    );
+    return <AuthSessionLoading />;
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getSafeReturnPath(location.state?.from)} replace />;
   }
 
   return <Outlet />;
