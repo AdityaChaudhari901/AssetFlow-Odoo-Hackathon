@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Annotated, Any, Optional
 
+import httpx
 import jwt
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -33,10 +34,23 @@ class CurrentUser(BaseModel):
 
 
 @lru_cache(maxsize=1)
-def _jwks_client() -> jwt.PyJWKClient:
+def _fetch_jwks() -> dict[str, Any]:
+    """Fetch the project JWKS once per process (httpx ships CA certs, urllib may not)."""
     settings = get_settings()
     url = f"{str(settings.supabase_url).rstrip('/')}/auth/v1/.well-known/jwks.json"
-    return jwt.PyJWKClient(url, cache_keys=True)
+    response = httpx.get(url, timeout=10)
+    response.raise_for_status()
+    return response.json()
+
+
+def _signing_key(token: str) -> Any:
+    kid = jwt.get_unverified_header(token).get("kid")
+    for attempt in range(2):
+        for key_data in _fetch_jwks().get("keys", []):
+            if key_data.get("kid") == kid:
+                return jwt.PyJWK(key_data).key
+        _fetch_jwks.cache_clear()  # key rotation: refetch once, then give up
+    raise jwt.PyJWTError(f"No JWKS entry for kid {kid!r}")
 
 
 def decode_token(token: str) -> dict[str, Any]:
@@ -54,16 +68,15 @@ def decode_token(token: str) -> dict[str, Any]:
                 algorithms=["HS256"],
                 audience="authenticated",
             )
-        signing_key = _jwks_client().get_signing_key_from_jwt(token)
         return jwt.decode(
             token,
-            signing_key.key,
+            _signing_key(token),
             algorithms=["ES256", "RS256"],
             audience="authenticated",
         )
     except jwt.ExpiredSignatureError as exc:
         raise ApiError.unauthorized("TOKEN_EXPIRED", "Access token has expired.") from exc
-    except jwt.PyJWTError as exc:
+    except (jwt.PyJWTError, httpx.HTTPError) as exc:
         raise ApiError.unauthorized() from exc
 
 
