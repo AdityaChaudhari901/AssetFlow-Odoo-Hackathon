@@ -3,6 +3,33 @@
 from typing import Any, Optional
 
 
+def holder_of(row: dict[str, Any]) -> tuple[Optional[str], Optional[dict[str, Any]]]:
+    """Normalize an allocation row's employee/department embeds into a holder.
+
+    Returns (holder_type, holder) where holder is
+    ``{id, name, full_name?, avatar_url?, department_name?}`` — the shape the
+    frontend renders in UserChip and holder columns.
+    """
+    employee = row.get("employee")
+    if employee:
+        department = employee.get("department") or {}
+        return "employee", {
+            "id": employee["id"],
+            "name": employee["full_name"],
+            "full_name": employee["full_name"],
+            "avatar_url": employee.get("avatar_url"),
+            "department_name": department.get("name"),
+        }
+    department = row.get("department")
+    if department:
+        return "department", {
+            "id": department["id"],
+            "name": department["name"],
+            "department_name": None,
+        }
+    return None, None
+
+
 def profile_out(row: dict[str, Any]) -> dict[str, Any]:
     """Flatten a profiles row (with embedded department) to the UserProfile shape."""
     department = row.get("department") or {}

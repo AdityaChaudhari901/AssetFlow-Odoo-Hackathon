@@ -38,6 +38,23 @@ TRANSITIONS = {
     "resolve": "in_progress",
 }
 
+# status -> next actions (drives the frontend workflow buttons)
+NEXT_ACTIONS = {
+    "pending": ["approve", "reject"],
+    "approved": ["assign"],
+    "assigned": ["start"],
+    "in_progress": ["resolve"],
+}
+
+
+def _serialize(row: dict[str, Any]) -> dict[str, Any]:
+    """Response shape: requester/reviewer as user objects + allowed actions."""
+    row = dict(row)
+    row["raised_by"] = row.pop("raised_by_user", None) or {"id": row.get("raised_by"), "full_name": "Unknown"}
+    row["reviewed_by"] = row.pop("reviewed_by_user", None)
+    row["allowed_actions"] = NEXT_ACTIONS.get(row.get("status"), [])
+    return row
+
 
 def _get_request(request_id: str) -> dict[str, Any]:
     result = (
@@ -97,11 +114,11 @@ def list_requests(
     if priority:
         query = query.eq("priority", priority)
     result = paged(query, params).execute()
-    return list_response(result.data, params, result.count)
+    return list_response([_serialize(r) for r in result.data], params, result.count)
 
 
 def get_request(request_id: str) -> dict[str, Any]:
-    return {"data": _get_request(request_id)}
+    return {"data": _serialize(_get_request(request_id))}
 
 
 def create_request(user: CurrentUser, payload: MaintenanceCreate) -> dict[str, Any]:
@@ -126,7 +143,7 @@ def create_request(user: CurrentUser, payload: MaintenanceCreate) -> dict[str, A
     )
     notification_service.log(user.id, "maintenance.requested", "maintenance", request["id"],
                              {"asset_id": payload.asset_id, "priority": payload.priority})
-    return {"data": request}
+    return {"data": _serialize(request)}
 
 
 def approve(user: CurrentUser, request_id: str) -> dict[str, Any]:
@@ -143,7 +160,7 @@ def approve(user: CurrentUser, request_id: str) -> dict[str, Any]:
         f"Your request for {_asset_label(request)} was approved — asset is now under maintenance.",
     )
     notification_service.log(user.id, "maintenance.approved", "maintenance", request_id)
-    return {"data": request}
+    return {"data": _serialize(request)}
 
 
 def reject(user: CurrentUser, request_id: str, payload: MaintenanceReject) -> dict[str, Any]:
@@ -164,7 +181,7 @@ def reject(user: CurrentUser, request_id: str, payload: MaintenanceReject) -> di
     )
     notification_service.log(user.id, "maintenance.rejected", "maintenance", request_id,
                              {"reason": payload.reason})
-    return {"data": request}
+    return {"data": _serialize(request)}
 
 
 def assign(user: CurrentUser, request_id: str, payload: MaintenanceAssign) -> dict[str, Any]:
@@ -179,7 +196,7 @@ def assign(user: CurrentUser, request_id: str, payload: MaintenanceAssign) -> di
     ).eq("id", request_id).eq("status", "approved").execute()
     notification_service.log(user.id, "maintenance.assigned", "maintenance", request_id,
                              {"technician_name": payload.technician_name})
-    return {"data": _get_request(request_id)}
+    return {"data": _serialize(_get_request(request_id))}
 
 
 def start(user: CurrentUser, request_id: str) -> dict[str, Any]:
@@ -189,7 +206,7 @@ def start(user: CurrentUser, request_id: str) -> dict[str, Any]:
         {"status": "in_progress", "started_at": datetime.now(timezone.utc).isoformat()}
     ).eq("id", request_id).eq("status", "assigned").execute()
     notification_service.log(user.id, "maintenance.started", "maintenance", request_id)
-    return {"data": _get_request(request_id)}
+    return {"data": _serialize(_get_request(request_id))}
 
 
 def resolve(user: CurrentUser, request_id: str, payload: MaintenanceResolve) -> dict[str, Any]:
@@ -210,4 +227,4 @@ def resolve(user: CurrentUser, request_id: str, payload: MaintenanceResolve) -> 
         f"{_asset_label(request)} is fixed and back in service.",
     )
     notification_service.log(user.id, "maintenance.resolved", "maintenance", request_id)
-    return {"data": request}
+    return {"data": _serialize(request)}

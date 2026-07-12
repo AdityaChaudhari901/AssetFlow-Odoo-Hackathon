@@ -67,8 +67,32 @@ def list_employees(
     return list_response(data, params, result.count)
 
 
+def list_pickable_employees(
+    params: PageParams, search: Optional[str]
+) -> dict[str, Any]:
+    """Lightweight active-employee list for allocation/transfer dropdowns.
+
+    Open to any authenticated user (it only exposes names + departments), unlike
+    the admin-scoped directory listing above.
+    """
+    query = (
+        get_service_client()
+        .table("profiles")
+        .select(PROFILE_SELECT, count="exact")
+        .eq("status", "active")
+        .order("full_name")
+    )
+    if search:
+        query = query.or_(f"full_name.ilike.%{search}%,email.ilike.%{search}%")
+    result = paged(query, params).execute()
+    return list_response([profile_out(row) for row in result.data], params, result.count)
+
+
 def get_employee(employee_id: str) -> dict[str, Any]:
-    profile = fetch_profile(employee_id)
+    try:
+        profile = fetch_profile(employee_id)
+    except PostgrestError as exc:
+        raise ApiError.not_found("Employee") from exc
     if profile is None:
         raise ApiError.not_found("Employee")
     counts = _active_allocation_counts([employee_id])

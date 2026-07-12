@@ -41,6 +41,15 @@ def _with_display(row: dict[str, Any]) -> dict[str, Any]:
     return row
 
 
+def _serialize(row: dict[str, Any], user: Optional[CurrentUser] = None) -> dict[str, Any]:
+    """Response shape: booked_by as a user object + is_mine for the caller."""
+    row = dict(row)
+    row["display_status"] = _display_status(row)
+    row["is_mine"] = user is not None and row.get("booked_by") == user.id
+    row["booked_by"] = row.pop("booked_by_user", None) or {"id": row.get("booked_by")}
+    return row
+
+
 def _get_booking(booking_id: str) -> dict[str, Any]:
     result = (
         get_service_client()
@@ -116,7 +125,7 @@ def list_bookings(
         query = query.lt("start_time", to.isoformat())
 
     result = paged(query, params).execute()
-    return list_response([_with_display(r) for r in result.data], params, result.count)
+    return list_response([_serialize(r, user) for r in result.data], params, result.count)
 
 
 def create_booking(user: CurrentUser, payload: BookingCreate) -> dict[str, Any]:
@@ -164,7 +173,7 @@ def create_booking(user: CurrentUser, payload: BookingCreate) -> dict[str, Any]:
     )
     notification_service.log(user.id, "booking.created", "booking", booking["id"],
                              {"asset_id": payload.asset_id})
-    return {"data": booking}
+    return {"data": _serialize(booking, user)}
 
 
 def _check_owner_or_manager(user: CurrentUser, booking: dict[str, Any]) -> None:
@@ -193,7 +202,7 @@ def reschedule(
         raise map_db_error(exc) from exc
 
     notification_service.log(user.id, "booking.rescheduled", "booking", booking_id)
-    return {"data": _get_booking(booking_id)}
+    return {"data": _serialize(_get_booking(booking_id), user)}
 
 
 def cancel(user: CurrentUser, booking_id: str, payload: BookingCancel) -> dict[str, Any]:
@@ -219,4 +228,4 @@ def cancel(user: CurrentUser, booking_id: str, payload: BookingCancel) -> dict[s
         )
     notification_service.log(user.id, "booking.cancelled", "booking", booking_id,
                              {"reason": payload.reason})
-    return {"data": _get_booking(booking_id)}
+    return {"data": _serialize(_get_booking(booking_id), user)}

@@ -13,11 +13,13 @@ from database.errors import UNIQUE_VIOLATION, map_db_error, rpc_error_code
 from database.supabase import get_service_client
 from schemas.allocations import AllocationCreate, AllocationReturn, TransferCreate
 from services import notification_service
+from services.serializers import holder_of
 
 ALLOCATION_SELECT = (
     "*, "
     "asset:assets!allocations_asset_id_fkey(id, asset_tag, name, status), "
-    "employee:profiles!allocations_employee_id_fkey(id, full_name), "
+    "employee:profiles!allocations_employee_id_fkey(id, full_name, avatar_url, "
+    "department:departments!profiles_department_id_fkey(id, name)), "
     "department:departments!allocations_department_id_fkey(id, name), "
     "allocated_by_user:profiles!allocations_allocated_by_fkey(id, full_name)"
 )
@@ -25,8 +27,11 @@ ALLOCATION_SELECT = (
 TRANSFER_SELECT = (
     "*, "
     "asset:assets!transfer_requests_asset_id_fkey(id, asset_tag, name, status), "
+    "from_allocation:allocations!transfer_requests_from_allocation_id_fkey(id, "
+    "employee:profiles!allocations_employee_id_fkey(id, full_name), "
+    "department:departments!allocations_department_id_fkey(id, name)), "
     "requested_by_user:profiles!transfer_requests_requested_by_fkey(id, full_name), "
-    "to_employee:profiles!transfer_requests_to_employee_id_fkey(id, full_name), "
+    "to_employee:profiles!transfer_requests_to_employee_id_fkey(id, full_name, department_id), "
     "to_department:departments!transfer_requests_to_department_id_fkey(id, name), "
     "reviewed_by_user:profiles!transfer_requests_reviewed_by_fkey(id, full_name)"
 )
@@ -37,6 +42,46 @@ def _with_overdue(row: dict[str, Any]) -> dict[str, Any]:
     row["is_overdue"] = (
         row.get("status") == "active" and bool(due) and date.fromisoformat(due) < date.today()
     )
+    return row
+
+
+def _allowed_actions(row: dict[str, Any], user: Optional[CurrentUser]) -> list[str]:
+    """Per-caller action hints the frontend uses to render buttons."""
+    if user is None or row.get("status") != "active":
+        return []
+    is_manager = user.role in MANAGERS
+    employee = row.get("employee") or {}
+    is_holder = employee.get("id") == user.id or (
+        row.get("department_id") is not None
+        and row["department_id"] == user.department_id
+        and user.role == DEPARTMENT_HEAD
+    )
+    actions = []
+    if is_holder and not row.get("return_requested"):
+        actions.append("request_return")
+    if is_holder or is_manager:
+        actions.append("request_transfer")
+    if is_manager:
+        actions.append("check_in")
+    return actions
+
+
+def enrich_allocation(
+    row: dict[str, Any], user: Optional[CurrentUser] = None
+) -> dict[str, Any]:
+    """Shape an allocation row for API responses: holder, overdue math, actions."""
+    row = dict(row)
+    _with_overdue(row)
+    due = row.get("expected_return_date")
+    row["days_overdue"] = (
+        max(0, (date.today() - date.fromisoformat(due)).days)
+        if due and row.get("status") == "active"
+        else 0
+    )
+    holder_type, holder = holder_of(row)
+    row["holder_type"] = holder_type
+    row["holder"] = holder or {"id": None, "name": "Unassigned", "department_name": None}
+    row["allowed_actions"] = _allowed_actions(row, user)
     return row
 
 
@@ -159,7 +204,9 @@ def list_allocations(
         query = query.eq("asset_id", asset_id)
 
     result = paged(query, params).execute()
-    return list_response([_with_overdue(r) for r in result.data], params, result.count)
+    return list_response(
+        [enrich_allocation(r, user) for r in result.data], params, result.count
+    )
 
 
 def allocate(user: CurrentUser, payload: AllocationCreate) -> dict[str, Any]:
@@ -203,7 +250,7 @@ def allocate(user: CurrentUser, payload: AllocationCreate) -> dict[str, Any]:
         {"asset_id": payload.asset_id, "employee_id": payload.employee_id,
          "department_id": payload.department_id},
     )
-    return {"data": allocation}
+    return {"data": enrich_allocation(allocation, user)}
 
 
 def request_return(user: CurrentUser, allocation_id: str) -> dict[str, Any]:
@@ -230,7 +277,7 @@ def request_return(user: CurrentUser, allocation_id: str) -> dict[str, Any]:
         exclude_user_id=user.id,
     )
     notification_service.log(user.id, "allocation.return_requested", "allocation", allocation_id)
-    return {"data": {**allocation, "return_requested": True}}
+    return {"data": {**enrich_allocation(allocation, user), "return_requested": True}}
 
 
 def return_asset(
@@ -260,12 +307,53 @@ def return_asset(
         user.id, "allocation.returned", "allocation", allocation_id,
         {"condition": payload.condition},
     )
-    return {"data": allocation}
+    return {"data": enrich_allocation(allocation, user)}
 
 
 # --------------------------------------------------------------------------
 # Transfers
 # --------------------------------------------------------------------------
+
+def _transfer_target_department(row: dict[str, Any]) -> Optional[str]:
+    if row.get("to_department_id"):
+        return row["to_department_id"]
+    return (row.get("to_employee") or {}).get("department_id")
+
+
+def enrich_transfer(
+    row: dict[str, Any], user: Optional[CurrentUser] = None
+) -> dict[str, Any]:
+    """Shape a transfer row: from_holder, to_target, reviewer objects, actions."""
+    row = dict(row)
+    _, from_holder = holder_of(row.get("from_allocation") or {})
+    row["from_holder"] = from_holder or {"id": None, "name": "Unknown"}
+    if row.get("to_employee"):
+        row["to_target"] = {
+            "type": "employee",
+            "id": row["to_employee"]["id"],
+            "name": row["to_employee"]["full_name"],
+        }
+    elif row.get("to_department"):
+        row["to_target"] = {
+            "type": "department",
+            "id": row["to_department"]["id"],
+            "name": row["to_department"]["name"],
+        }
+    else:
+        row["to_target"] = {"type": None, "id": None, "name": "Unknown"}
+    row["requested_by"] = row.pop("requested_by_user", None) or {"full_name": None}
+    row["reviewed_by"] = row.pop("reviewed_by_user", None)
+
+    can_review = user is not None and row.get("status") == "pending" and (
+        user.role in MANAGERS
+        or (
+            user.role == DEPARTMENT_HEAD
+            and _transfer_target_department(row) == user.department_id
+        )
+    )
+    row["allowed_actions"] = ["approve", "reject"] if can_review else []
+    return row
+
 
 def list_transfers(
     user: CurrentUser,
@@ -287,7 +375,9 @@ def list_transfers(
     if asset_id:
         query = query.eq("asset_id", asset_id)
     result = paged(query, params).execute()
-    return list_response(result.data, params, result.count)
+    return list_response(
+        [enrich_transfer(r, user) for r in result.data], params, result.count
+    )
 
 
 def create_transfer(user: CurrentUser, payload: TransferCreate) -> dict[str, Any]:
@@ -335,7 +425,7 @@ def create_transfer(user: CurrentUser, payload: TransferCreate) -> dict[str, Any
     )
     notification_service.log(user.id, "transfer.requested", "transfer", transfer["id"],
                              {"asset_id": payload.asset_id})
-    return {"data": _get_transfer(transfer["id"])}
+    return {"data": enrich_transfer(_get_transfer(transfer["id"]), user)}
 
 
 def _get_transfer(transfer_id: str) -> dict[str, Any]:
@@ -400,7 +490,14 @@ def approve_transfer(user: CurrentUser, transfer_id: str, notes: Optional[str]) 
     if new_allocation is not None:
         _notify_new_holder(new_allocation, label)
     notification_service.log(user.id, "transfer.approved", "transfer", transfer_id)
-    return {"data": {"transfer": transfer, "new_allocation": new_allocation}}
+    return {
+        "data": {
+            "transfer": enrich_transfer(transfer, user),
+            "new_allocation": (
+                enrich_allocation(new_allocation, user) if new_allocation else None
+            ),
+        }
+    }
 
 
 def reject_transfer(user: CurrentUser, transfer_id: str, reason: Optional[str]) -> dict[str, Any]:
@@ -421,4 +518,4 @@ def reject_transfer(user: CurrentUser, transfer_id: str, reason: Optional[str]) 
     )
     notification_service.log(user.id, "transfer.rejected", "transfer", transfer_id,
                              {"reason": reason})
-    return {"data": _get_transfer(transfer_id)}
+    return {"data": enrich_transfer(_get_transfer(transfer_id), user)}
