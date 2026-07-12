@@ -12,6 +12,7 @@ from database.errors import map_db_error
 from database.supabase import get_service_client
 from schemas.assets import AssetCreate, AssetStatusChange, AssetUpdate
 from services import notification_service
+from services.serializers import holder_of
 
 ASSET_SELECT = (
     "*, "
@@ -20,12 +21,36 @@ ASSET_SELECT = (
 )
 
 ALLOCATION_HISTORY_SELECT = (
-    "id, allocated_at, expected_return_date, status, returned_at, return_condition, "
-    "return_notes, notes, return_requested, "
-    "employee:profiles!allocations_employee_id_fkey(id, full_name), "
+    "id, asset_id, allocated_at, expected_return_date, status, returned_at, "
+    "return_condition, return_notes, notes, return_requested, "
+    "employee:profiles!allocations_employee_id_fkey(id, full_name, avatar_url, "
+    "department:departments!profiles_department_id_fkey(id, name)), "
     "department:departments!allocations_department_id_fkey(id, name), "
     "allocated_by:profiles!allocations_allocated_by_fkey(id, full_name)"
 )
+
+
+def _with_holder(allocation: dict[str, Any]) -> dict[str, Any]:
+    allocation = dict(allocation)
+    holder_type, holder = holder_of(allocation)
+    allocation["holder_type"] = holder_type
+    allocation["holder"] = holder or {"id": None, "name": "Unassigned", "department_name": None}
+    return allocation
+
+
+def _current_holders(asset_ids: list[str]) -> dict[str, dict[str, Any]]:
+    """Map asset_id -> holder for all active allocations among the given assets."""
+    if not asset_ids:
+        return {}
+    result = (
+        get_service_client()
+        .table("allocations")
+        .select(ALLOCATION_HISTORY_SELECT)
+        .in_("asset_id", asset_ids)
+        .eq("status", "active")
+        .execute()
+    )
+    return {row["asset_id"]: _with_holder(row)["holder"] for row in result.data}
 
 # Manual transitions only; everything else moves through workflows.
 MANUAL_TRANSITIONS: dict[str, set[str]] = {
@@ -62,7 +87,7 @@ def _active_allocation(asset_id: str) -> Optional[dict[str, Any]]:
     )
     if not result.data:
         return None
-    allocation = result.data[0]
+    allocation = _with_holder(result.data[0])
     due = allocation.get("expected_return_date")
     allocation["is_overdue"] = bool(due) and date.fromisoformat(due) < date.today()
     return allocation
@@ -99,7 +124,9 @@ def list_assets(
     sort_column = sort if sort in {"name", "asset_tag", "created_at", "status", "acquisition_date"} else "created_at"
     query = query.order(sort_column, desc=(order != "asc"))
     result = paged(query, params).execute()
-    return list_response(result.data, params, result.count)
+    holders = _current_holders([row["id"] for row in result.data])
+    rows = [{**row, "current_holder": holders.get(row["id"])} for row in result.data]
+    return list_response(rows, params, result.count)
 
 
 def create_asset(user: CurrentUser, payload: AssetCreate) -> dict[str, Any]:
@@ -120,6 +147,9 @@ def create_asset(user: CurrentUser, payload: AssetCreate) -> dict[str, Any]:
 def get_asset(asset_id: str) -> dict[str, Any]:
     asset = _fetch_asset(asset_id)
     asset["current_allocation"] = _active_allocation(asset_id)
+    asset["current_holder"] = (
+        asset["current_allocation"]["holder"] if asset["current_allocation"] else None
+    )
     open_maintenance = (
         get_service_client()
         .table("maintenance_requests")
@@ -215,7 +245,7 @@ def get_history(asset_id: str) -> dict[str, Any]:
     ]
     return {
         "data": {
-            "allocations": allocations.data,
+            "allocations": [_with_holder(row) for row in allocations.data],
             "maintenance": maintenance.data,
             "audits": audit_rows,
         }

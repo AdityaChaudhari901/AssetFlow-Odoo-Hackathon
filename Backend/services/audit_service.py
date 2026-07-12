@@ -34,6 +34,13 @@ def _flatten_auditors(cycle: dict[str, Any]) -> dict[str, Any]:
     return cycle
 
 
+def _serialize_record(row: dict[str, Any]) -> dict[str, Any]:
+    """Response shape: audited_by as a user object (frontend renders a UserChip)."""
+    row = dict(row)
+    row["audited_by"] = row.pop("audited_by_user", None)
+    return row
+
+
 def _get_cycle(cycle_id: str) -> dict[str, Any]:
     result = (
         get_service_client()
@@ -156,7 +163,7 @@ def get_cycle_detail(user: CurrentUser, cycle_id: str) -> dict[str, Any]:
         .execute()
     )
     cycle["progress"] = _progress(cycle_id)
-    cycle["records"] = records.data
+    cycle["records"] = [_serialize_record(row) for row in records.data]
     return {"data": cycle}
 
 
@@ -186,7 +193,15 @@ def update_record(user: CurrentUser, cycle_id: str, payload: AuditRecordUpdate) 
         raise ApiError.not_found("Audit record (asset is not in this cycle's scope)")
     notification_service.log(user.id, "audit.record_updated", "audit", cycle_id,
                              {"asset_id": payload.asset_id, "result": payload.result})
-    return {"data": result.data[0]}
+    refreshed = (
+        get_service_client()
+        .table("audit_records")
+        .select(RECORD_SELECT)
+        .eq("id", result.data[0]["id"])
+        .limit(1)
+        .execute()
+    )
+    return {"data": _serialize_record(refreshed.data[0])}
 
 
 def discrepancies(user: CurrentUser, cycle_id: str) -> dict[str, Any]:
@@ -200,7 +215,7 @@ def discrepancies(user: CurrentUser, cycle_id: str) -> dict[str, Any]:
         .in_("result", ["missing", "damaged"])
         .execute()
     )
-    return {"data": records.data}
+    return {"data": [_serialize_record(row) for row in records.data]}
 
 
 def close_cycle(user: CurrentUser, cycle_id: str) -> dict[str, Any]:

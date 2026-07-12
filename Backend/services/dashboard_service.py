@@ -5,7 +5,7 @@ from typing import Any
 
 from core.pagination import PageParams, list_response, paged
 from database.supabase import get_service_client
-from services.allocation_service import ALLOCATION_SELECT, _with_overdue
+from services.allocation_service import ALLOCATION_SELECT, enrich_allocation
 
 
 def _count(table: str, filters) -> int:
@@ -68,10 +68,6 @@ def returns(type_: str, params: PageParams) -> dict[str, Any]:
             "expected_return_date", (today + timedelta(days=7)).isoformat()
         )
     result = paged(query, params).execute()
-    rows = []
-    for row in result.data:
-        row = _with_overdue(row)
-        due = date.fromisoformat(row["expected_return_date"])
-        row["days_overdue"] = max(0, (today - due).days)
-        rows.append(row)
-    return list_response(rows, params, result.count)
+    return list_response(
+        [enrich_allocation(row) for row in result.data], params, result.count
+    )

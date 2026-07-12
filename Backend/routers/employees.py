@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends
 
-from core.auth import CurrentUser
+from core.auth import CurrentUser, get_current_user
 from core.pagination import PageParams, page_params
 from core.permissions import ADMIN, ASSET_MANAGER, DEPARTMENT_HEAD, require_roles
 from schemas.employees import EmployeeUpdate
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/employees", tags=["Employees"])
 DirectoryUser = Annotated[
     CurrentUser, Depends(require_roles(ADMIN, ASSET_MANAGER, DEPARTMENT_HEAD))
 ]
+AnyUser = Annotated[CurrentUser, Depends(get_current_user)]
 
 
 @router.get("")
@@ -27,6 +28,17 @@ def list_employees(
     status: Optional[str] = None,
 ) -> dict:
     return employee_service.list_employees(user, params, search, department_id, role, status)
+
+
+# Declared before /{employee_id} so "picker" is not parsed as an id.
+@router.get("/picker")
+def picker(
+    user: AnyUser,
+    params: Annotated[PageParams, Depends(page_params)],
+    search: Optional[str] = None,
+) -> dict:
+    """Active-employee list for allocation/transfer dropdowns (any authed user)."""
+    return employee_service.list_pickable_employees(params, search)
 
 
 @router.get("/{employee_id}")
