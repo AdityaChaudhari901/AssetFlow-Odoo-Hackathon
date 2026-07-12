@@ -96,6 +96,141 @@ export const BADGE_CLASSES = Object.freeze({
     "border-asset-retired-border bg-asset-retired-surface text-asset-retired",
   disposed:
     "border-asset-disposed-border bg-asset-disposed-surface text-asset-disposed",
+  "state-active":
+    "border-success-border bg-success-surface text-success",
+  "state-inactive":
+    "border-asset-retired-border bg-asset-retired-surface text-asset-retired",
+  "state-pending":
+    "border-asset-reserved-border bg-asset-reserved-surface text-asset-reserved",
+  "state-approved":
+    "border-success-border bg-success-surface text-success",
+  "state-rejected":
+    "border-asset-lost-border bg-asset-lost-surface text-asset-lost",
+  "state-assigned":
+    "border-asset-allocated-border bg-asset-allocated-surface text-asset-allocated",
+  "state-in-progress":
+    "border-asset-maintenance-border bg-asset-maintenance-surface text-asset-maintenance",
+  "state-resolved":
+    "border-success-border bg-success-surface text-success",
+  "priority-low":
+    "border-asset-retired-border bg-asset-retired-surface text-asset-retired",
+  "priority-medium":
+    "border-asset-allocated-border bg-asset-allocated-surface text-asset-allocated",
+  "priority-high":
+    "border-asset-maintenance-border bg-asset-maintenance-surface text-asset-maintenance",
+  "priority-critical":
+    "border-asset-lost-border bg-asset-lost-surface text-asset-lost",
+  "booking-upcoming":
+    "border-asset-allocated-border bg-asset-allocated-surface text-asset-allocated",
+  "booking-active":
+    "border-success-border bg-success-surface text-success",
+  "booking-complete":
+    "border-asset-retired-border bg-asset-retired-surface text-asset-retired",
+  "booking-cancelled":
+    "border-asset-lost-border bg-asset-lost-surface text-asset-lost",
+  "audit-pending":
+    "border-asset-retired-border bg-asset-retired-surface text-asset-retired",
+  "audit-verified":
+    "border-success-border bg-success-surface text-success",
+  "audit-missing":
+    "border-asset-lost-border bg-asset-lost-surface text-asset-lost",
+  "audit-damaged":
+    "border-asset-maintenance-border bg-asset-maintenance-surface text-asset-maintenance",
+});
+
+export const STATUS_CONFIG = Object.freeze({
+  asset: ASSET_STATUS,
+  entity: {
+    active: { label: "Active", color: "state-active" },
+    inactive: { label: "Inactive", color: "state-inactive" },
+  },
+  allocation: {
+    active: { label: "Active", color: "state-active" },
+    returned: { label: "Returned", color: "state-inactive" },
+    overdue: { label: "Overdue", color: "state-rejected" },
+    return_requested: { label: "Return requested", color: "state-pending" },
+  },
+  transfer: {
+    pending: { label: "Pending", color: "state-pending" },
+    approved: { label: "Approved", color: "state-approved" },
+    rejected: { label: "Rejected", color: "state-rejected" },
+  },
+  booking: {
+    upcoming: { label: "Upcoming", color: BOOKING_DISPLAY_STATUS.upcoming },
+    ongoing: { label: "Ongoing", color: BOOKING_DISPLAY_STATUS.ongoing },
+    completed: { label: "Completed", color: BOOKING_DISPLAY_STATUS.completed },
+    cancelled: { label: "Cancelled", color: BOOKING_DISPLAY_STATUS.cancelled },
+  },
+  maintenance: {
+    pending: { label: "Pending", color: "state-pending" },
+    approved: { label: "Approved", color: "state-approved" },
+    rejected: { label: "Rejected", color: "state-rejected" },
+    assigned: { label: "Technician assigned", color: "state-assigned" },
+    in_progress: { label: "In progress", color: "state-in-progress" },
+    resolved: { label: "Resolved", color: "state-resolved" },
+  },
+  priority: Object.fromEntries(
+    Object.entries(MAINTENANCE_PRIORITY).map(([value, color]) => [
+      value,
+      { label: value[0].toUpperCase() + value.slice(1), color },
+    ]),
+  ),
+  audit: {
+    pending: { label: "Pending", color: AUDIT_RESULT.pending },
+    verified: { label: "Verified", color: AUDIT_RESULT.verified },
+    missing: { label: "Missing", color: AUDIT_RESULT.missing },
+    damaged: { label: "Damaged", color: AUDIT_RESULT.damaged },
+  },
+  auditCycle: {
+    open: { label: "Open", color: "state-active" },
+    closed: { label: "Closed", color: "state-inactive" },
+  },
+  role: Object.fromEntries(
+    Object.entries(ROLES).map(([value, label]) => [
+      value,
+      {
+        label,
+        color: value === APP_ROLES.ADMIN ? "reserved" : "allocated",
+      },
+    ]),
+  ),
+  condition: Object.fromEntries(
+    CONDITION.map((value) => [
+      value,
+      {
+        label: value[0].toUpperCase() + value.slice(1),
+        color: ["poor", "damaged"].includes(value)
+          ? "maintenance"
+          : "state-inactive",
+      },
+    ]),
+  ),
+});
+
+export const MAINTENANCE_FLOW = Object.freeze([
+  "pending",
+  "approved",
+  "assigned",
+  "in_progress",
+  "resolved",
+]);
+
+export const NOTIFICATION_TYPE_META = Object.freeze({
+  asset_assigned: { label: "Asset", icon: "package" },
+  booking_reminder: { label: "Booking", icon: "clock" },
+  maintenance_approved: { label: "Maintenance", icon: "wrench" },
+  transfer_requested: { label: "Transfer", icon: "transfer" },
+  overdue_return: { label: "Overdue", icon: "alert" },
+  audit_discrepancy: { label: "Audit", icon: "search" },
+});
+
+export const ENTITY_ROUTE_MAP = Object.freeze({
+  asset: (id) => `/assets/${encodeURIComponent(id)}`,
+  booking: () => "/bookings",
+  maintenance: () => "/maintenance",
+  transfer: () => "/allocations?tab=transfers",
+  allocation: () => "/allocations",
+  audit: (id) => `/audits/${encodeURIComponent(id)}`,
 });
 
 export const NAV_ITEMS = Object.freeze([

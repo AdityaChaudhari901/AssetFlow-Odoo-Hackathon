@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Bell, ChevronDown, LogOut, Menu } from "lucide-react";
-import { Link, matchPath, useLocation } from "react-router";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Bell, ChevronDown, LogOut, Menu, Search } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { Link, matchPath, useLocation, useNavigate } from "react-router";
+import { z } from "zod";
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +27,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { ROLES, ROUTE_META } from "@/lib/constants";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 
 function getInitials(name = "") {
   const initials = name
@@ -43,11 +48,25 @@ function getRouteMeta(pathname) {
   );
 }
 
+const globalSearchSchema = z.object({
+  query: z.string().trim().min(1).max(120),
+});
+
 export function Topbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const routeMeta = getRouteMeta(location.pathname);
+  const { register, handleSubmit, reset } = useForm({
+    resolver: zodResolver(globalSearchSchema),
+    defaultValues: { query: "" },
+  });
+
+  function searchAssets(values) {
+    navigate(`/assets?search=${encodeURIComponent(values.query.trim())}`);
+    reset();
+  }
 
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center border-b border-border/80 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:px-6 lg:px-8">
@@ -88,17 +107,24 @@ export function Topbar() {
           </div>
         </div>
 
+        <form
+          className="relative ml-auto hidden w-full max-w-sm md:block"
+          role="search"
+          onSubmit={handleSubmit(searchAssets)}
+          noValidate
+        >
+          <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" aria-hidden="true" />
+          <Input
+            type="search"
+            placeholder="Search asset tag, name, or serial"
+            aria-label="Search assets"
+            className="h-9 bg-muted/25 pl-9"
+            {...register("query")}
+          />
+        </form>
+
         <div className="flex items-center gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="relative size-11 sm:size-9"
-          >
-            <Link to="/notifications" aria-label="Open notifications">
-              <Bell aria-hidden="true" />
-            </Link>
-          </Button>
+          <NotificationBell />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

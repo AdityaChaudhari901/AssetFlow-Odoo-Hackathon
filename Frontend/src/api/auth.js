@@ -2,12 +2,14 @@ import {
   ApiError,
   api,
   authApi,
+  getSessionGeneration,
   normalizeApiError,
   refreshAccessToken,
   withSessionLock,
 } from "@/api/client";
 
 let restorePromise = null;
+let restorePromiseGeneration = null;
 
 function unwrapData(response) {
   return response.data?.data;
@@ -78,18 +80,31 @@ export function getCurrentUser() {
 }
 
 export function restoreSession() {
-  if (restorePromise) {
+  const requestGeneration = getSessionGeneration();
+
+  if (restorePromise && restorePromiseGeneration === requestGeneration) {
     return restorePromise;
   }
 
-  const request = refreshAccessToken()
+  const request = refreshAccessToken(requestGeneration)
     .then(() => getCurrentUser())
+    .then((profile) => {
+      if (requestGeneration !== getSessionGeneration()) {
+        throw new ApiError({
+          code: "SESSION_SUPERSEDED",
+          message: "The session changed while the profile was loading.",
+        });
+      }
+      return profile;
+    })
     .finally(() => {
       if (restorePromise === request) {
         restorePromise = null;
+        restorePromiseGeneration = null;
       }
     });
 
   restorePromise = request;
+  restorePromiseGeneration = requestGeneration;
   return request;
 }

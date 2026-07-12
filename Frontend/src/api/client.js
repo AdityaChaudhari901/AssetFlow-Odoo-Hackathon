@@ -9,6 +9,7 @@ const SESSION_LOCK_NAME = "assetflow.session.operation";
 let accessToken = null;
 let sessionUserId = null;
 let refreshPromise = null;
+let refreshPromiseGeneration = null;
 let sessionGeneration = 0;
 let sessionExpiredEmitted = false;
 
@@ -122,6 +123,13 @@ export function getSessionGeneration() {
   return sessionGeneration;
 }
 
+function sessionSuperseded(message = "The session changed while the request was in progress.") {
+  return new ApiError({
+    code: "SESSION_SUPERSEDED",
+    message,
+  });
+}
+
 export function startSession(token, userId = null) {
   sessionGeneration += 1;
   accessToken = token || null;
@@ -191,10 +199,7 @@ export async function withSessionLock(callback) {
 
 async function requestAccessToken(requestGeneration) {
   if (requestGeneration !== sessionGeneration) {
-    throw new ApiError({
-      code: "SESSION_SUPERSEDED",
-      message: "The session changed before it could be refreshed.",
-    });
+    throw sessionSuperseded("The session changed before it could be refreshed.");
   }
 
   const { data } = await authApi.post("/auth/refresh");
@@ -210,10 +215,7 @@ async function requestAccessToken(requestGeneration) {
   }
 
   if (requestGeneration !== sessionGeneration) {
-    throw new ApiError({
-      code: "SESSION_SUPERSEDED",
-      message: "The session changed while it was being refreshed.",
-    });
+    throw sessionSuperseded("The session changed while it was being refreshed.");
   }
 
   if (sessionUserId && refreshedUserId && sessionUserId !== refreshedUserId) {
@@ -230,12 +232,30 @@ async function requestAccessToken(requestGeneration) {
   return token;
 }
 
-export function refreshAccessToken() {
+export function refreshAccessToken(expectedGeneration = sessionGeneration) {
+  if (expectedGeneration !== sessionGeneration) {
+    return Promise.reject(
+      sessionSuperseded("The session changed before refresh could begin."),
+    );
+  }
+
   if (refreshPromise) {
+    if (refreshPromiseGeneration !== expectedGeneration) {
+      return refreshPromise
+        .catch(() => undefined)
+        .then(() => {
+          if (expectedGeneration !== sessionGeneration) {
+            throw sessionSuperseded(
+              "The session changed while an older refresh was finishing.",
+            );
+          }
+          return refreshAccessToken(expectedGeneration);
+        });
+    }
     return refreshPromise;
   }
 
-  const requestGeneration = sessionGeneration;
+  const requestGeneration = expectedGeneration;
   const request = withSessionLock(() => requestAccessToken(requestGeneration))
     .catch((error) => {
       throw normalizeApiError(error);
@@ -243,10 +263,12 @@ export function refreshAccessToken() {
     .finally(() => {
       if (refreshPromise === request) {
         refreshPromise = null;
+        refreshPromiseGeneration = null;
       }
     });
 
   refreshPromise = request;
+  refreshPromiseGeneration = requestGeneration;
   return request;
 }
 
@@ -265,6 +287,7 @@ export async function waitForPendingRefresh() {
 authApi.interceptors.request.use(requireConfiguration);
 api.interceptors.request.use((config) => {
   const configuredRequest = requireConfiguration(config);
+  configuredRequest._assetFlowGeneration = sessionGeneration;
 
   if (accessToken) {
     setAuthorizationHeader(configuredRequest, accessToken);
@@ -274,7 +297,16 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const requestGeneration = response.config?._assetFlowGeneration;
+    if (
+      requestGeneration !== undefined &&
+      requestGeneration !== sessionGeneration
+    ) {
+      throw sessionSuperseded();
+    }
+    return response;
+  },
   async (error) => {
     const normalizedError = normalizeApiError(error);
     const originalRequest = error?.config;
@@ -283,14 +315,29 @@ api.interceptors.response.use(
       throw normalizedError;
     }
 
-    if (!originalRequest || originalRequest._assetFlowRetried) {
+    if (!originalRequest) {
+      throw expireSession(normalizedError.requestId);
+    }
+
+    const requestGeneration = originalRequest._assetFlowGeneration;
+    if (
+      requestGeneration !== undefined &&
+      requestGeneration !== sessionGeneration
+    ) {
+      throw sessionSuperseded();
+    }
+
+    if (originalRequest._assetFlowRetried) {
       throw expireSession(normalizedError.requestId);
     }
 
     originalRequest._assetFlowRetried = true;
 
     try {
-      const token = await refreshAccessToken();
+      const token = await refreshAccessToken(requestGeneration);
+      if (requestGeneration !== sessionGeneration) {
+        throw sessionSuperseded("The session changed before retrying the request.");
+      }
       setAuthorizationHeader(originalRequest, token);
       return api(originalRequest);
     } catch (refreshError) {

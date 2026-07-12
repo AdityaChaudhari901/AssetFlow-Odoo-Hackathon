@@ -26,6 +26,7 @@ import {
   startSession,
   waitForPendingRefresh,
 } from "@/api/client";
+import { setFixtureIdentity } from "@/api/__fixtures__/session";
 
 const AUTH_SYNC_KEY = "assetflow.auth.sync";
 const AuthContext = createContext(null);
@@ -69,6 +70,7 @@ export function AuthProvider({ children }) {
       clearSession();
       void queryClient.cancelQueries();
       queryClient.clear();
+      setFixtureIdentity(null);
       setUser(null);
       setAuthError(null);
       setLoading(false);
@@ -97,6 +99,7 @@ export function AuthProvider({ children }) {
       }
 
       setSessionIdentity(profile.id);
+      setFixtureIdentity(profile);
       setUser(profile);
       return profile;
     } catch (error) {
@@ -116,6 +119,7 @@ export function AuthProvider({ children }) {
       }
 
       clearSession();
+      setFixtureIdentity(null);
       setUser(null);
       setAuthError(error);
 
@@ -130,6 +134,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     void hydrateSession();
   }, [hydrateSession]);
+
+  useEffect(() => {
+    setFixtureIdentity(user);
+  }, [user]);
 
   useEffect(
     () =>
@@ -186,6 +194,7 @@ export function AuthProvider({ children }) {
         }
 
         setSessionIdentity(profile.id);
+        setFixtureIdentity(profile);
         setUser(profile);
         setAuthError(null);
       } catch (error) {
@@ -216,6 +225,7 @@ export function AuthProvider({ children }) {
       const operation = ++authOperation.current;
       setAuthError(null);
       clearSession();
+      setFixtureIdentity(null);
       setUser(null);
       await queryClient.cancelQueries();
       queryClient.clear();
@@ -233,6 +243,7 @@ export function AuthProvider({ children }) {
       }
 
       setSessionIdentity(profile.id);
+      setFixtureIdentity(profile);
       setUser(profile);
       publishAuthEvent("login");
       return profile;
@@ -246,6 +257,7 @@ export function AuthProvider({ children }) {
       const operation = ++authOperation.current;
       setAuthError(null);
       clearSession();
+      setFixtureIdentity(null);
       setUser(null);
       await queryClient.cancelQueries();
       queryClient.clear();
@@ -268,6 +280,7 @@ export function AuthProvider({ children }) {
       }
 
       setSessionIdentity(profile.id);
+      setFixtureIdentity(profile);
       setUser(profile);
       publishAuthEvent("login");
       return result;
@@ -321,6 +334,7 @@ export function AuthProvider({ children }) {
     }
 
     setSessionIdentity(profile.id);
+    setFixtureIdentity(profile);
     setUser(profile);
     setAuthError(null);
     return profile;
