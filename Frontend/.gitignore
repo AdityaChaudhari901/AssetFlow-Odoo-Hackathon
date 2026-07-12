@@ -6,3 +6,4 @@
 
 # Vite
 /dist/
+.vercel
