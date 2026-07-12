@@ -63,18 +63,6 @@ export function LoginPage() {
         eyebrow="Secure access"
         title="Sign in to AssetFlow"
         description="Continue to your assigned assets, bookings, approvals, and audit-ready activity."
-        footer={
-          <p>
-            New to AssetFlow?{" "}
-            <AuthLink
-              to="/signup"
-              state={location.state}
-              disabled={isSubmitting}
-            >
-              Create an employee account
-            </AuthLink>
-          </p>
-        }
       >
         <form
           className="space-y-5"
