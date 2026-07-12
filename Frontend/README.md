@@ -1,6 +1,6 @@
 # AssetFlow Frontend
 
-Plain React frontend built with JavaScript, JSX, Vite, and Tailwind CSS.
+Plain React frontend built with JavaScript, JSX, Vite, Tailwind CSS, and React Router.
 
 ## Commands
 
@@ -11,4 +11,4 @@ npm run build
 npm run preview
 ```
 
-The application source lives in `src/`. No TypeScript or routing library is installed.
+The application source lives in `src/`. React Router is configured in declarative mode with a browser router, a root route, and a safe fallback route. No TypeScript is installed.
