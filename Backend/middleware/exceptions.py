@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from core.errors import ApiError
 from schemas.common import ErrorDetail, ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,17 @@ async def validation_error_handler(
     )
 
 
+async def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
+    """Render expected domain failures with their stable error codes."""
+    return _error_response(
+        request=request,
+        status_code=exc.status_code,
+        code=exc.code,
+        message=exc.message,
+        details=exc.details,
+    )
+
+
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Log unexpected failures without exposing internal details."""
     logger.exception(
@@ -74,4 +86,5 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 def register_exception_handlers(application: FastAPI) -> None:
     """Register application-wide exception handlers."""
     application.add_exception_handler(RequestValidationError, validation_error_handler)
+    application.add_exception_handler(ApiError, api_error_handler)
     application.add_exception_handler(Exception, unhandled_error_handler)
