@@ -10,7 +10,8 @@ Python FastAPI service for AssetFlow's versioned REST API.
 - Versioned `/api/v1` router composition
 - Root and versioned health endpoints
 - Request ID middleware for traceable responses
-- Stable JSON envelopes for application, validation, and unexpected errors
+- Stable JSON envelopes for validation and unexpected errors
+- One cached Supabase client using the project URL and publishable key
 
 ## Local setup
 
@@ -34,16 +35,10 @@ The API documentation is exposed at `/docs`. Liveness is exposed at `/health`, a
 
 - `app/`: application entrypoint and composition
 - `config/`: validated runtime configuration
-- `controllers/`: optional request orchestration when a route requires it
-- `database/`: future database clients, migrations, and repositories
+- `database/`: Supabase client and future persistence code
 - `middleware/`: request context and centralized exception handling
-- `models/`: future persistence models
 - `routers/`: HTTP route definitions and versioned composition
 - `schemas/`: Pydantic request and response schemas
-- `services/`: framework-independent business workflows
-- `types/`: shared backend types when needed
-- `utils/`: framework-independent helpers
-- `tests/`: future backend tests
 
 ## Environment variables
 
@@ -55,5 +50,9 @@ Copy `.env.example` to `.env` and configure:
 - `ASSETFLOW_DEBUG`
 - `ASSETFLOW_API_V1_PREFIX`
 - `ASSETFLOW_CORS_ORIGINS`: comma-separated allowed frontend origins
+- `ASSETFLOW_SUPABASE_URL`: Supabase project URL
+- `ASSETFLOW_SUPABASE_PUBLISHABLE_KEY`: low-privilege project key for RLS-protected operations
 
-The database, authentication strategy, and persistence models remain intentionally unselected for the next backend increment.
+`Backend/.env` and environment-specific variants are ignored by Git. Commit only placeholder values in `.env.example`.
+
+The backend currently uses the official Python `supabase` client and its Data API. A direct PostgreSQL connection, persistence models, table schema, RLS policies, and authentication remain separate implementation increments.

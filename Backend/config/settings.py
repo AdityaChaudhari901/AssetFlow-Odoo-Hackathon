@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import AnyHttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
+    supabase_url: AnyHttpUrl
+    supabase_publishable_key: SecretStr
 
     @field_validator("api_v1_prefix")
     @classmethod
@@ -37,11 +39,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         """Return configured CORS origins as a normalized list."""
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return [
+            origin.strip()
+            for origin in self.cors_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache
 def get_settings() -> Settings:
     """Return one cached settings object per process."""
     return Settings()
-

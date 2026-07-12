@@ -12,24 +12,6 @@ from schemas.common import ErrorDetail, ErrorResponse
 logger = logging.getLogger(__name__)
 
 
-class ApplicationError(Exception):
-    """A safe application error that can be returned to API clients."""
-
-    def __init__(
-        self,
-        *,
-        code: str,
-        message: str,
-        status_code: int = status.HTTP_400_BAD_REQUEST,
-        details: Optional[Any] = None,
-    ) -> None:
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.status_code = status_code
-        self.details = details
-
-
 def _request_id(request: Request) -> Optional[str]:
     return getattr(request.state, "request_id", None)
 
@@ -51,19 +33,6 @@ def _error_response(
         )
     )
     return JSONResponse(status_code=status_code, content=payload.model_dump(mode="json"))
-
-
-async def application_error_handler(
-    request: Request, exc: ApplicationError
-) -> JSONResponse:
-    """Return a stable error envelope for expected application failures."""
-    return _error_response(
-        request=request,
-        status_code=exc.status_code,
-        code=exc.code,
-        message=exc.message,
-        details=exc.details,
-    )
 
 
 async def validation_error_handler(
@@ -104,7 +73,5 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 
 def register_exception_handlers(application: FastAPI) -> None:
     """Register application-wide exception handlers."""
-    application.add_exception_handler(ApplicationError, application_error_handler)
     application.add_exception_handler(RequestValidationError, validation_error_handler)
     application.add_exception_handler(Exception, unhandled_error_handler)
-
