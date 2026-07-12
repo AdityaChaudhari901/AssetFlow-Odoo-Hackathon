@@ -10,26 +10,111 @@ import {
 } from "@/api/__fixtures__/maintenance";
 import { request } from "@/api/transport";
 
-export const listMaintenance = (params, signal) =>
-  request({ method: "get", url: "/maintenance", params, signal }, () => fixtureListMaintenance(params));
+function normalizePerson(person, joinedPerson) {
+  if (person && typeof person === "object") {
+    return person;
+  }
 
-export const getMaintenance = (id, signal) =>
-  request({ method: "get", url: `/maintenance/${id}`, signal }, () => fixtureGetMaintenance(id));
+  if (joinedPerson) {
+    return joinedPerson;
+  }
 
-export const createMaintenance = (payload) =>
-  request({ method: "post", url: "/maintenance", data: payload }, () => fixtureCreateMaintenance(payload));
+  return person ? { id: person, full_name: "Unknown user" } : null;
+}
 
-export const approveMaintenance = (id) =>
-  request({ method: "post", url: `/maintenance/${id}/approve` }, () => fixtureApproveMaintenance(id));
+function normalizeMaintenanceRequest(maintenanceRequest) {
+  if (!maintenanceRequest) {
+    return maintenanceRequest;
+  }
 
-export const rejectMaintenance = (id, payload) =>
-  request({ method: "post", url: `/maintenance/${id}/reject`, data: payload }, () => fixtureRejectMaintenance(id, payload));
+  return {
+    ...maintenanceRequest,
+    raised_by: normalizePerson(
+      maintenanceRequest.raised_by,
+      maintenanceRequest.raised_by_user,
+    ),
+    reviewed_by: normalizePerson(
+      maintenanceRequest.reviewed_by,
+      maintenanceRequest.reviewed_by_user,
+    ),
+    rejection_reason:
+      maintenanceRequest.rejection_reason ?? maintenanceRequest.review_notes ?? null,
+  };
+}
 
-export const assignMaintenance = (id, payload) =>
-  request({ method: "post", url: `/maintenance/${id}/assign`, data: payload }, () => fixtureAssignMaintenance(id, payload));
+function normalizeMaintenanceResponse(response) {
+  if (Array.isArray(response?.data)) {
+    return {
+      ...response,
+      data: response.data.map(normalizeMaintenanceRequest),
+    };
+  }
 
-export const startMaintenance = (id) =>
-  request({ method: "post", url: `/maintenance/${id}/start` }, () => fixtureStartMaintenance(id));
+  return response?.data
+    ? { ...response, data: normalizeMaintenanceRequest(response.data) }
+    : response;
+}
 
-export const resolveMaintenance = (id, payload) =>
-  request({ method: "post", url: `/maintenance/${id}/resolve`, data: payload }, () => fixtureResolveMaintenance(id, payload));
+export async function listMaintenance(params, signal) {
+  const response = await request(
+    { method: "get", url: "/maintenance", params, signal },
+    () => fixtureListMaintenance(params),
+  );
+  return normalizeMaintenanceResponse(response);
+}
+
+export async function getMaintenance(id, signal) {
+  const response = await request(
+    { method: "get", url: `/maintenance/${id}`, signal },
+    () => fixtureGetMaintenance(id),
+  );
+  return normalizeMaintenanceResponse(response);
+}
+
+export async function createMaintenance(payload) {
+  const response = await request(
+    { method: "post", url: "/maintenance", data: payload },
+    () => fixtureCreateMaintenance(payload),
+  );
+  return normalizeMaintenanceResponse(response);
+}
+
+export async function approveMaintenance(id) {
+  const response = await request(
+    { method: "post", url: `/maintenance/${id}/approve` },
+    () => fixtureApproveMaintenance(id),
+  );
+  return normalizeMaintenanceResponse(response);
+}
+
+export async function rejectMaintenance(id, payload) {
+  const response = await request(
+    { method: "post", url: `/maintenance/${id}/reject`, data: payload },
+    () => fixtureRejectMaintenance(id, payload),
+  );
+  return normalizeMaintenanceResponse(response);
+}
+
+export async function assignMaintenance(id, payload) {
+  const response = await request(
+    { method: "post", url: `/maintenance/${id}/assign`, data: payload },
+    () => fixtureAssignMaintenance(id, payload),
+  );
+  return normalizeMaintenanceResponse(response);
+}
+
+export async function startMaintenance(id) {
+  const response = await request(
+    { method: "post", url: `/maintenance/${id}/start` },
+    () => fixtureStartMaintenance(id),
+  );
+  return normalizeMaintenanceResponse(response);
+}
+
+export async function resolveMaintenance(id, payload) {
+  const response = await request(
+    { method: "post", url: `/maintenance/${id}/resolve`, data: payload },
+    () => fixtureResolveMaintenance(id, payload),
+  );
+  return normalizeMaintenanceResponse(response);
+}

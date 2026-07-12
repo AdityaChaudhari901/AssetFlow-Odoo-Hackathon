@@ -182,7 +182,7 @@ export function MaintenanceDetailSheet({ requestId, open, onOpenChange, canManag
                 <div className="flex flex-wrap gap-2"><StatusBadge kind="priority" value={request.priority} /><StatusBadge kind="maintenance" value={request.status} /></div>
                 <div><h2 className="text-xl font-semibold tracking-tight">{request.title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{request.description || "No description was provided."}</p></div>
                 <dl className="grid gap-3 rounded-xl border border-border bg-muted/20 p-4 text-sm sm:grid-cols-2">
-                  <div><dt className="text-xs text-muted-foreground">Raised by</dt><dd className="mt-1 font-medium">{request.raised_by.full_name}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Raised by</dt><dd className="mt-1 font-medium">{request.raised_by?.full_name ?? "Unknown requester"}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Raised</dt><dd className="mt-1"><RelativeTime value={request.created_at} /></dd></div>
                   <div><dt className="text-xs text-muted-foreground">Last updated</dt><dd className="mt-1">{fmtDateTime(request.updated_at)}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Technician</dt><dd className="mt-1 font-medium">{request.technician_name || "Not assigned"}</dd></div>
