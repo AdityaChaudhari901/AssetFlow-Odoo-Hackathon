@@ -27,4 +27,5 @@ def session_out(session: Any) -> Optional[dict[str, Any]]:
         "access_token": session.access_token,
         "refresh_token": session.refresh_token,
         "expires_at": session.expires_at,
+        "user_id": getattr(getattr(session, "user", None), "id", None),
     }

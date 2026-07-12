@@ -84,8 +84,13 @@ def refresh(refresh_token: str) -> dict[str, Any]:
     return {"data": {"session": session_out(result.session)}}
 
 
-def logout(access_token: str) -> dict[str, Any]:
+def logout(access_token: str, refresh_token: str | None = None) -> dict[str, Any]:
     try:
+        if not access_token and refresh_token:
+            result = get_auth_client().auth.refresh_session(refresh_token)
+            access_token = result.session.access_token if result.session else ""
+        if not access_token:
+            return {"data": {"ok": True}}
         get_service_client().auth.admin.sign_out(access_token)
     except Exception:  # best-effort: an already-dead session is fine
         logger.info("Logout: session already invalid")
@@ -105,7 +110,7 @@ def forgot_password(email: str) -> dict[str, Any]:
 
 
 def reset_password(payload: ResetPasswordRequest) -> dict[str, Any]:
-    claims = decode_token(payload.access_token)
+    claims = decode_token(payload.recovery_token)
     get_service_client().auth.admin.update_user_by_id(
         claims["sub"], {"password": payload.new_password}
     )
