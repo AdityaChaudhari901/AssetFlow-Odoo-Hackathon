@@ -1,24 +1,46 @@
 import { Navigate, Route, Routes } from "react-router";
 
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 export function App() {
   return (
     <Routes>
       <Route
         path="/"
         element={
-          <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16 text-slate-100">
-            <section className="w-full max-w-3xl rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl shadow-black/20 sm:p-12">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-400">
-                AssetFlow
-              </p>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-6xl">
-                React frontend is ready.
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                The plain React, JavaScript, Vite, and Tailwind foundation is
-                ready for the AssetFlow interface.
-              </p>
-            </section>
+          <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-foreground">
+            <Card className="w-full max-w-3xl">
+              <CardHeader>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                  AssetFlow
+                </p>
+                <CardTitle className="text-4xl font-semibold tracking-tight sm:text-6xl">
+                  <h1>Frontend foundation is ready.</h1>
+                </CardTitle>
+                <CardDescription className="max-w-2xl text-base leading-7 sm:text-lg">
+                  React Router, Tailwind CSS, and shadcn/ui are configured for
+                  the AssetFlow interface.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild size="lg">
+                  <a
+                    href="https://ui.shadcn.com/docs/components"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Browse shadcn components
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
           </main>
         }
       />
