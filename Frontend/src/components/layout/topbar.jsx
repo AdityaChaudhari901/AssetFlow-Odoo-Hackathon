@@ -6,6 +6,7 @@ import { Link, matchPath, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
 
 import { Sidebar } from "@/components/layout/sidebar";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +39,7 @@ function getInitials(name = "") {
     .join("")
     .toUpperCase();
 
-  return initials || "AF";
+  return initials || "U";
 }
 
 function getRouteMeta(pathname) {
@@ -77,7 +78,7 @@ export function Topbar() {
               <Button
                 variant="outline"
                 size="icon"
-                className="size-11 lg:hidden"
+                className="size-11 md:hidden"
                 aria-label="Open navigation"
               >
                 <Menu aria-hidden="true" />
@@ -92,6 +93,7 @@ export function Topbar() {
               </SheetHeader>
               <Sidebar
                 user={user}
+                mobile
                 onNavigate={() => setMobileNavigationOpen(false)}
               />
             </SheetContent>
@@ -124,6 +126,7 @@ export function Topbar() {
         </form>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <NotificationBell />
 
           <DropdownMenu>

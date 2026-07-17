@@ -5,11 +5,13 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
     "@hookform/resolvers": "^5.4.0",
+    "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-query": "^5.101.2",
     "axios": "^1.18.1",
     "class-variance-authority": "^0.7.1",
@@ -17,6 +19,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.24.0",
+    "motion": "^12.42.2",
     "radix-ui": "^1.6.2",
     "react": "^19.2.7",
     "react-day-picker": "^10.0.1",

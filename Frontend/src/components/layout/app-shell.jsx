@@ -49,10 +49,10 @@ export function AppShell() {
       <div className="flex min-h-screen">
         <Sidebar
           user={user}
-          className="fixed inset-y-0 left-0 z-40 hidden w-62 border-r border-sidebar-border lg:flex"
+          className="fixed inset-y-0 left-0 border-r border-sidebar-border"
         />
 
-        <div className="flex min-w-0 flex-1 flex-col lg:pl-62">
+        <div className="flex min-w-0 flex-1 flex-col md:pl-[60px]">
           <Topbar />
 
           {!online ? (

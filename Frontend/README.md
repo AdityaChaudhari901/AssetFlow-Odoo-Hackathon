@@ -93,7 +93,8 @@ The browser communicates only with FastAPI. It does not initialize a Supabase cl
 
 - FastAPI returns a short-lived access token, which remains in JavaScript memory.
 - FastAPI stores and rotates the refresh token in an `HttpOnly`, `Secure`, `SameSite` cookie.
-- Refresh responses identify the authenticated `user_id`, and `/auth/me` returns capability strings for assignment-scoped access such as `audits.view`.
+- Refresh responses return both the rotated session metadata and the current user profile, including capability strings for assignment-scoped access such as `audits.view`. Older compatible backends may omit the profile, in which case the frontend falls back to `/auth/me`.
+- Initial session refresh has a five-second timeout and exits to a recoverable session error instead of leaving protected routes behind an indefinite loading screen.
 - Axios sends cookie credentials to login, refresh, and logout endpoints.
 - A protected request receives at most one refresh-and-retry attempt.
 - Logout and session expiry clear the complete query cache to prevent cross-user data exposure.

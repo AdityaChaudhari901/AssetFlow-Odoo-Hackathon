@@ -87,7 +87,7 @@ export function restoreSession() {
   }
 
   const request = refreshAccessToken(requestGeneration)
-    .then(() => getCurrentUser())
+    .then(({ user }) => user ?? getCurrentUser())
     .then((profile) => {
       if (requestGeneration !== getSessionGeneration()) {
         throw new ApiError({

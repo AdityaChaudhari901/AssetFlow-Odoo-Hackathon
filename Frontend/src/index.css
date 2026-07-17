@@ -13,45 +13,45 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Operational Ledger: warm inventory paper, graphite ink, and Odoo plum. */
-  --background: oklch(0.985 0.004 80);
-  --foreground: oklch(0.205 0.012 275);
-  --card: oklch(0.997 0.002 80);
-  --card-foreground: oklch(0.205 0.012 275);
-  --popover: oklch(0.997 0.002 80);
-  --popover-foreground: oklch(0.205 0.012 275);
-  --primary: oklch(0.445 0.085 326);
-  --primary-foreground: oklch(0.985 0.003 80);
-  --secondary: oklch(0.95 0.009 270);
-  --secondary-foreground: oklch(0.245 0.014 275);
-  --muted: oklch(0.962 0.006 275);
-  --muted-foreground: oklch(0.47 0.018 275);
-  --accent: oklch(0.955 0.021 326);
-  --accent-foreground: oklch(0.355 0.075 326);
+  /* White Lavender Ledger: bright work surfaces with focused violet actions. */
+  --background: oklch(0.982 0.009 295);
+  --foreground: oklch(0.205 0.018 285);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.205 0.018 285);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.205 0.018 285);
+  --primary: oklch(0.49 0.18 298);
+  --primary-foreground: oklch(0.99 0.002 295);
+  --secondary: oklch(0.952 0.022 295);
+  --secondary-foreground: oklch(0.285 0.045 290);
+  --muted: oklch(0.962 0.013 295);
+  --muted-foreground: oklch(0.465 0.03 285);
+  --accent: oklch(0.935 0.041 295);
+  --accent-foreground: oklch(0.365 0.14 298);
   --destructive: oklch(0.515 0.2 27);
   --success: oklch(0.39 0.115 151);
   --success-surface: oklch(0.955 0.035 151);
   --success-border: oklch(0.81 0.075 151);
-  --border: oklch(0.895 0.009 275);
-  --input: oklch(0.875 0.012 275);
-  --ring: oklch(0.57 0.11 326);
+  --border: oklch(0.89 0.026 295);
+  --input: oklch(0.855 0.034 295);
+  --ring: oklch(0.58 0.18 298);
 
-  --chart-1: oklch(0.51 0.105 326);
-  --chart-2: oklch(0.53 0.12 247);
+  --chart-1: oklch(0.52 0.18 298);
+  --chart-2: oklch(0.57 0.16 326);
   --chart-3: oklch(0.51 0.115 151);
   --chart-4: oklch(0.59 0.13 72);
   --chart-5: oklch(0.56 0.16 27);
 
   --radius: 0.625rem;
 
-  --sidebar: oklch(0.985 0.004 80);
-  --sidebar-foreground: oklch(0.205 0.012 275);
-  --sidebar-primary: oklch(0.445 0.085 326);
-  --sidebar-primary-foreground: oklch(0.985 0.003 80);
-  --sidebar-accent: oklch(0.955 0.021 326);
-  --sidebar-accent-foreground: oklch(0.355 0.075 326);
-  --sidebar-border: oklch(0.895 0.009 275);
-  --sidebar-ring: oklch(0.57 0.11 326);
+  --sidebar: oklch(0.998 0.002 295);
+  --sidebar-foreground: oklch(0.205 0.018 285);
+  --sidebar-primary: oklch(0.49 0.18 298);
+  --sidebar-primary-foreground: oklch(0.99 0.002 295);
+  --sidebar-accent: oklch(0.935 0.041 295);
+  --sidebar-accent-foreground: oklch(0.365 0.14 298);
+  --sidebar-border: oklch(0.89 0.026 295);
+  --sidebar-ring: oklch(0.58 0.18 298);
 
   /* Asset lifecycle states: foreground, quiet surface, and boundary. */
   --asset-available: oklch(0.39 0.115 151);

@@ -1,4 +1,4 @@
- import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 function initials(name = "") {
@@ -9,7 +9,7 @@ function initials(name = "") {
       .slice(0, 2)
       .map((part) => part[0])
       .join("")
-      .toUpperCase() || "AF"
+      .toUpperCase() || "U"
   );
 }
 

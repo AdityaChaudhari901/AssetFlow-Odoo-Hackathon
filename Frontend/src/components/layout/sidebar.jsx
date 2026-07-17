@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ArrowLeftRight,
   BarChart3,
@@ -9,10 +10,18 @@ import {
   ScrollText,
   Wrench,
 } from "lucide-react";
+import { motion } from "motion/react";
 import { NavLink } from "react-router";
 
-import { cn } from "@/lib/utils";
+import { OdooBrand, OdooLogo } from "@/components/shared/odoo-brand";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DesktopSidebar,
+  Sidebar as AceternitySidebar,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { NAV_ITEMS, ROLES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 const ICONS = {
   activity: ScrollText,
@@ -37,80 +46,199 @@ function canViewItem(item, user) {
   );
 }
 
-export function Sidebar({ user, onNavigate, className }) {
+function getInitials(name = "") {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+  return initials || "U";
+}
+
+function SidebarBrand({ expanded, onNavigate }) {
   return (
-    <aside
+    <NavLink
+      to="/"
+      onClick={onNavigate}
       className={cn(
-        "flex h-full w-full flex-col bg-sidebar text-sidebar-foreground",
-        className,
+        "flex h-16 shrink-0 items-center border-b border-sidebar-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring",
+        expanded ? "gap-3 px-5" : "justify-center px-3",
       )}
+      aria-label={expanded ? undefined : "AssetFlow dashboard"}
     >
-      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border px-5">
-        <span className="grid size-9 place-items-center rounded-lg bg-sidebar-primary text-xs font-semibold tracking-wide text-sidebar-primary-foreground">
-          AF
+      <OdooLogo
+        className={cn("shrink-0", expanded ? "h-4.5" : "h-3.5 max-w-9")}
+        alt=""
+      />
+      <motion.span
+        initial={false}
+        animate={{ opacity: expanded ? 1 : 0, width: expanded ? "auto" : 0 }}
+        className="min-w-0 overflow-hidden whitespace-nowrap"
+        aria-hidden={!expanded}
+      >
+        <span className="block truncate text-sm font-semibold tracking-tight">
+          AssetFlow
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold tracking-tight">AssetFlow</p>
-          <p className="truncate text-xs text-muted-foreground">Operations ledger</p>
-        </div>
-      </div>
+        <span className="block truncate text-xs text-muted-foreground">
+          Operations ledger
+        </span>
+      </motion.span>
+    </NavLink>
+  );
+}
 
-      <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Primary navigation">
-        <div className="space-y-6">
-          {NAV_ITEMS.map((group) => {
-            const visibleItems = group.items.filter((item) => canViewItem(item, user));
+function SidebarNavigation({ user, expanded, onNavigate }) {
+  return (
+    <nav
+      className="flex-1 overflow-x-hidden overflow-y-auto px-2 py-5"
+      aria-label="Primary navigation"
+    >
+      <div className="space-y-6">
+        {NAV_ITEMS.map((group) => {
+          const visibleItems = group.items.filter((item) => canViewItem(item, user));
 
-            if (visibleItems.length === 0) {
-              return null;
-            }
+          if (visibleItems.length === 0) {
+            return null;
+          }
 
-            return (
-              <div key={group.group} className="space-y-1.5">
-                <p className="px-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  {group.group}
-                </p>
-                <ul className="space-y-1">
-                  {visibleItems.map((item) => {
-                    const Icon = ICONS[item.icon];
+          return (
+            <div key={group.group} className="space-y-1.5">
+              <motion.p
+                initial={false}
+                animate={{ opacity: expanded ? 1 : 0, height: expanded ? "auto" : 0 }}
+                className="overflow-hidden whitespace-nowrap px-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+                aria-hidden={!expanded}
+              >
+                {group.group}
+              </motion.p>
+              <ul className="space-y-1">
+                {visibleItems.map((item) => {
+                  const Icon = ICONS[item.icon];
 
-                    return (
-                      <li key={item.to}>
-                        <NavLink
-                          to={item.to}
-                          end={item.to === "/"}
-                          onClick={onNavigate}
-                          className={({ isActive }) =>
-                            cn(
-                              "group relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring lg:min-h-10",
-                              isActive &&
-                                "bg-sidebar-accent font-medium text-sidebar-accent-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-primary",
-                            )
-                          }
+                  return (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        end={item.to === "/"}
+                        onClick={onNavigate}
+                        title={expanded ? undefined : item.label}
+                        aria-label={expanded ? undefined : item.label}
+                        className={({ isActive }) =>
+                          cn(
+                            "group relative flex min-h-11 items-center rounded-lg text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                            expanded ? "gap-3 px-3" : "justify-center px-2",
+                            isActive &&
+                              "bg-sidebar-accent font-medium text-sidebar-accent-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-primary",
+                          )
+                        }
+                      >
+                        <Icon className="size-5 shrink-0" aria-hidden="true" />
+                        <motion.span
+                          initial={false}
+                          animate={{
+                            opacity: expanded ? 1 : 0,
+                            width: expanded ? "auto" : 0,
+                          }}
+                          className="overflow-hidden whitespace-nowrap"
+                          aria-hidden={!expanded}
                         >
-                          <Icon className="size-4 shrink-0" aria-hidden="true" />
-                          <span>{item.label}</span>
-                        </NavLink>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      </nav>
+                          {item.label}
+                        </motion.span>
+                      </NavLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
 
-      <div className="border-t border-sidebar-border p-4">
-        <div className="rounded-lg border border-sidebar-border bg-card/55 px-3 py-3">
+function SidebarAccount({ user, expanded }) {
+  return (
+    <div className="border-t border-sidebar-border p-2">
+      {expanded ? <OdooBrand className="mb-3 justify-center" /> : null}
+      <div
+        className={cn(
+          "flex min-h-12 items-center rounded-lg border border-sidebar-border bg-card/55",
+          expanded ? "gap-3 px-3 py-2" : "justify-center p-2",
+        )}
+      >
+        <Avatar className="size-8 shrink-0">
+          <AvatarImage src={user?.avatar_url ?? undefined} alt="" />
+          <AvatarFallback className="text-[0.68rem] font-semibold">
+            {getInitials(user?.full_name)}
+          </AvatarFallback>
+        </Avatar>
+        <motion.div
+          initial={false}
+          animate={{ opacity: expanded ? 1 : 0, width: expanded ? "auto" : 0 }}
+          className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
+          aria-hidden={!expanded}
+        >
           <p className="truncate text-xs font-medium text-foreground">
             {user?.organization_name ?? "AssetFlow workspace"}
           </p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {ROLES[user?.role] ?? "Employee"}
             {user?.department_name ? ` · ${user.department_name}` : ""}
           </p>
-        </div>
+        </motion.div>
       </div>
+    </div>
+  );
+}
+
+function SidebarContent({ user, expanded, onNavigate }) {
+  return (
+    <aside className="flex h-full min-h-0 w-full flex-col bg-sidebar text-sidebar-foreground">
+      <SidebarBrand expanded={expanded} onNavigate={onNavigate} />
+      <SidebarNavigation user={user} expanded={expanded} onNavigate={onNavigate} />
+      <SidebarAccount user={user} expanded={expanded} />
     </aside>
+  );
+}
+
+function ExpandableSidebarContent({ user }) {
+  const { open } = useSidebar();
+
+  return <SidebarContent user={user} expanded={open} />;
+}
+
+export function Sidebar({ user, onNavigate, mobile = false, className }) {
+  const [open, setOpen] = useState(false);
+
+  if (mobile) {
+    return <SidebarContent user={user} expanded onNavigate={onNavigate} />;
+  }
+
+  return (
+    <AceternitySidebar open={open} setOpen={setOpen}>
+      <DesktopSidebar
+        className={cn(
+          "z-40 !bg-sidebar !p-0 text-sidebar-foreground",
+          className,
+        )}
+        onMouseLeave={(event) => {
+          if (!event.currentTarget.contains(document.activeElement)) {
+            setOpen(false);
+          }
+        }}
+        onFocusCapture={() => setOpen(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setOpen(false);
+          }
+        }}
+      >
+        <ExpandableSidebarContent user={user} />
+      </DesktopSidebar>
+    </AceternitySidebar>
   );
 }

@@ -1,5 +1,8 @@
 import { ArrowRight, CircleDotDashed, ShieldCheck } from "lucide-react";
 
+import { OdooBrand, OdooLogo } from "@/components/shared/odoo-brand";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+
 const CUSTODY_STEPS = [
   { label: "Register", detail: "Create the asset passport" },
   { label: "Allocate", detail: "Record accountable custody" },
@@ -9,9 +12,7 @@ const CUSTODY_STEPS = [
 function AssetFlowMark() {
   return (
     <div className="flex items-center gap-3">
-      <span className="grid size-10 place-items-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-        AF
-      </span>
+      <OdooLogo className="h-5 shrink-0" />
       <span>
         <span className="block text-lg font-semibold tracking-tight">AssetFlow</span>
         <span className="block text-xs text-muted-foreground">
@@ -25,6 +26,7 @@ function AssetFlowMark() {
 export function AuthShell({ children }) {
   return (
     <main className="relative min-h-screen min-h-dvh overflow-x-hidden bg-background">
+      <ThemeToggle className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6" />
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-primary"
         aria-hidden="true"
@@ -82,9 +84,12 @@ export function AuthShell({ children }) {
             </ol>
           </div>
 
-          <div className="flex items-center gap-2 text-xs leading-5 text-muted-foreground">
-            <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
-            <span>Identity is verified before operational data is loaded.</span>
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-2 text-xs leading-5 text-muted-foreground">
+              <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
+              <span>Identity is verified before operational data is loaded.</span>
+            </div>
+            <OdooBrand className="shrink-0" />
           </div>
         </section>
 
@@ -96,10 +101,13 @@ export function AuthShell({ children }) {
 
             {children}
 
-            <p className="flex items-center justify-center gap-2 text-center text-xs leading-5 text-muted-foreground">
-              <ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />
-              Secure access managed by AssetFlow and your organization.
-            </p>
+            <div className="space-y-3">
+              <p className="flex items-center justify-center gap-2 text-center text-xs leading-5 text-muted-foreground">
+                <ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />
+                Secure access managed by AssetFlow and your organization.
+              </p>
+              <OdooBrand className="justify-center lg:hidden" />
+            </div>
           </div>
         </section>
       </div>

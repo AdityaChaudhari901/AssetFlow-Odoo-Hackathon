@@ -81,7 +81,24 @@ def refresh(refresh_token: str) -> dict[str, Any]:
         raise ApiError.unauthorized(
             "INVALID_REFRESH_TOKEN", "Session expired. Please log in again."
         ) from exc
-    return {"data": {"session": session_out(result.session)}}
+
+    if result.user is None:
+        raise ApiError.unauthorized(
+            "INVALID_REFRESH_TOKEN", "Session expired. Please log in again."
+        )
+
+    profile = fetch_profile(result.user.id)
+    if profile is None:
+        raise ApiError.unauthorized("AUTH_REQUIRED", "Authentication required.")
+    if profile["status"] != "active":
+        raise ApiError(403, "ACCOUNT_INACTIVE", "This account has been deactivated.")
+
+    return {
+        "data": {
+            "session": session_out(result.session),
+            "user": profile_out(profile),
+        }
+    }
 
 
 def logout(access_token: str, refresh_token: str | None = None) -> dict[str, Any]:

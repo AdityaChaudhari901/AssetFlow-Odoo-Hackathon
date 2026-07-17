@@ -3,6 +3,7 @@ import axios from "axios";
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 const baseURL = rawBaseUrl ? rawBaseUrl.replace(/\/+$/, "") : "/";
 const REQUEST_TIMEOUT_MS = 15_000;
+const SESSION_REFRESH_TIMEOUT_MS = 5_000;
 const SESSION_EXPIRED_EVENT = "assetflow:session-expired";
 const SESSION_LOCK_NAME = "assetflow.session.operation";
 
@@ -202,9 +203,12 @@ async function requestAccessToken(requestGeneration) {
     throw sessionSuperseded("The session changed before it could be refreshed.");
   }
 
-  const { data } = await authApi.post("/auth/refresh");
+  const { data } = await authApi.post("/auth/refresh", undefined, {
+    timeout: SESSION_REFRESH_TIMEOUT_MS,
+  });
   const session = data?.data?.session;
   const token = session?.access_token;
+  const user = data?.data?.user ?? null;
   const refreshedUserId = session?.user_id ?? data?.data?.user?.id ?? null;
 
   if (!token) {
@@ -229,7 +233,7 @@ async function requestAccessToken(requestGeneration) {
   accessToken = token;
   sessionUserId = refreshedUserId ?? sessionUserId;
   sessionExpiredEmitted = false;
-  return token;
+  return { accessToken: token, user };
 }
 
 export function refreshAccessToken(expectedGeneration = sessionGeneration) {
@@ -334,11 +338,11 @@ api.interceptors.response.use(
     originalRequest._assetFlowRetried = true;
 
     try {
-      const token = await refreshAccessToken(requestGeneration);
+      const { accessToken } = await refreshAccessToken(requestGeneration);
       if (requestGeneration !== sessionGeneration) {
         throw sessionSuperseded("The session changed before retrying the request.");
       }
-      setAuthorizationHeader(originalRequest, token);
+      setAuthorizationHeader(originalRequest, accessToken);
       return api(originalRequest);
     } catch (refreshError) {
       const normalizedRefreshError = normalizeApiError(refreshError);

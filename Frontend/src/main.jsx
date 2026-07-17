@@ -2,12 +2,13 @@ import { StrictMode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
-import { Toaster } from "sonner";
 
 import { App } from "@/app";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
+import { AppToaster } from "@/components/shared/app-toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/auth-context";
+import { ThemeProvider } from "@/context/theme-context";
 import "@/index.css";
 import { queryClient } from "@/lib/query-client";
 
@@ -19,21 +20,19 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <AppErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <TooltipProvider delayDuration={250}>
-              <App />
-              <Toaster
-                closeButton
-                position="top-right"
-                toastOptions={{ duration: 4_000 }}
-              />
-            </TooltipProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </AppErrorBoundary>
+    <ThemeProvider>
+      <AppErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <AuthProvider>
+              <TooltipProvider delayDuration={250}>
+                <App />
+                <AppToaster />
+              </TooltipProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </AppErrorBoundary>
+    </ThemeProvider>
   </StrictMode>,
 );

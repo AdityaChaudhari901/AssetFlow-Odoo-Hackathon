@@ -1,10 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 
 import { RequireAuth } from "@/components/guards/require-auth";
 import { RequireGuest } from "@/components/guards/require-guest";
 import { RequireRole } from "@/components/guards/require-role";
-import { AppShell } from "@/components/layout/app-shell";
 import { RouteLoading } from "@/components/shared/route-loading";
 import { useAuth } from "@/hooks/use-auth";
 import { APP_ROLES, MANAGER_ROLES } from "@/lib/constants";
@@ -53,6 +52,8 @@ function NotFoundBoundary() {
 }
 
 const LoginPage = lazyNamed(() => import("@/pages/auth/login"), "LoginPage");
+const loadAppShell = () => import("@/components/layout/app-shell");
+const AppShell = lazyNamed(loadAppShell, "AppShell");
 const SignupPage = lazyNamed(() => import("@/pages/auth/signup"), "SignupPage");
 const ForgotPasswordPage = lazyNamed(
   () => import("@/pages/auth/forgot-password"),
@@ -116,7 +117,22 @@ const NotFoundPage = lazyNamed(
   "NotFoundPage",
 );
 
+const PUBLIC_ENTRY_PATHS = new Set([
+  "/forgot-password",
+  "/login",
+  "/reset-password",
+  "/signup",
+]);
+
 export function AppRoutes() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!PUBLIC_ENTRY_PATHS.has(location.pathname)) {
+      void loadAppShell().catch(() => undefined);
+    }
+  }, [location.pathname]);
+
   return (
     <Routes>
       <Route
@@ -134,7 +150,7 @@ export function AppRoutes() {
       </Route>
 
       <Route element={<RequireAuth />}>
-        <Route element={<AppShell />}>
+        <Route element={<Page component={AppShell} />}>
           <Route index element={<Page component={DashboardPage} />} />
           <Route path="assets" element={<Page component={AssetListPage} />} />
           <Route path="assets/:id" element={<Page component={AssetDetailPage} />} />
